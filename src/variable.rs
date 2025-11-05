@@ -1,17 +1,18 @@
+use anyhow::{anyhow, Result};
 use gimli::{
     AttributeValue::{DebugInfoRef, DebugStrRef, Exprloc, LocationListsRef, UnitRef},
     DebuggingInformationEntry, Dwarf, Reader, Unit, UnitOffset, UnitSectionOffset,
 };
-
-use crate::evaluate::attributes;
-use crate::evaluate::evaluate;
-use crate::registers::Registers;
-use crate::source_information::SourceInformation;
-use crate::utils::in_range;
-use crate::variable::evaluate::EvaluatorValue;
-use crate::{call_stack::MemoryAccess, utils::DwarfOffset};
-use anyhow::{anyhow, Result};
 use log::{error, info, trace};
+
+use crate::{
+    call_stack::MemoryAccess,
+    evaluate::{attributes, evaluate},
+    registers::Registers,
+    source_information::SourceInformation,
+    utils::{in_range, DwarfOffset},
+    variable::evaluate::EvaluatorValue,
+};
 
 /// Defines what debug information a variable has.
 #[derive(Debug, Clone)]
@@ -19,7 +20,8 @@ pub struct Variable<R: Reader<Offset = usize>> {
     /// The name of the variable.
     pub name: Option<String>,
 
-    /// A tree structured like the variable type in DWARF, but it also contains the values
+    /// A tree structured like the variable type in DWARF, but it also contains
+    /// the values
     pub value: EvaluatorValue<R>,
 
     /// The source code location where the variable was declared.
@@ -33,17 +35,21 @@ impl<R: Reader<Offset = usize>> Variable<R> {
     ///
     /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
     /// * `registers` - A reference to the `Registers` struct.
-    /// * `memory` - A reference to a struct that implements the `MemoryAccess` trait.
-    /// * `section_offset` - A offset to the compilation unit where the DIE for the variable is
+    /// * `memory` - A reference to a struct that implements the `MemoryAccess`
+    ///   trait.
+    /// * `section_offset` - A offset to the compilation unit where the DIE for
+    ///   the variable is
     /// located.
-    /// * `unit_offset` - A offset into the compilation unit where the DIE representing the
+    /// * `unit_offset` - A offset into the compilation unit where the DIE
+    ///   representing the
     /// variable is located.
-    /// * `frame_base` - The value of the frame base, which is often needed to evaluate the
+    /// * `frame_base` - The value of the frame base, which is often needed to
+    ///   evaluate the
     /// variable.
     /// * `cwd` - The work directory of the program being debugged.
     ///
-    /// This function will go through the DIE in the compilation unit to find the necessary
-    /// debug information.
+    /// This function will go through the DIE in the compilation unit to find
+    /// the necessary debug information.
     /// Then it will use that information to evaluate the value of the variable.
     pub fn get_variable<M: MemoryAccess>(
         dwarf: &Dwarf<R>,
@@ -155,7 +161,8 @@ impl<R: Reader<Offset = usize>> Variable<R> {
     }
 }
 
-/// Will check if the given DIE has one of the DWARF tags that represents a variable.
+/// Will check if the given DIE has one of the DWARF tags that represents a
+/// variable.
 ///
 /// Description:
 ///
@@ -165,7 +172,8 @@ impl<R: Reader<Offset = usize>> Variable<R> {
 /// - DW_TAG_variable
 /// - DW_TAG_formal_parameter
 /// - DW_TAG_constant
-/// If the DIE has one of the tags the function will return `true`, otherwise `false`.
+/// If the DIE has one of the tags the function will return `true`, otherwise
+/// `false`.
 pub fn is_variable_die<R: Reader<Offset = usize>>(die: &DebuggingInformationEntry<R>) -> bool {
     // Check that it is a variable.
     die.tag() == gimli::DW_TAG_variable
@@ -178,15 +186,16 @@ pub fn is_variable_die<R: Reader<Offset = usize>>(die: &DebuggingInformationEntr
 /// Description:
 ///
 /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
-/// * `unit` - A reference to gimli-rs `Unit` struct, which the given DIE is located in.
+/// * `unit` - A reference to gimli-rs `Unit` struct, which the given DIE is
+///   located in.
 /// * `die` - A reference to DIE.
 ///
-/// Will check if the given DIE represents a variable, if it does not it will return a error.
-/// After that it will try to evaluate the `DW_AT_name` attribute and return the result.
-/// But if it dose not have the name attribute it will try to get the name from the DIE in the
-/// `DW_AT_abstract_origin` attribute.
-/// If that attribute is missing it will return `Ok(None)`, because the variable does not have a
-/// name.
+/// Will check if the given DIE represents a variable, if it does not it will
+/// return a error. After that it will try to evaluate the `DW_AT_name`
+/// attribute and return the result. But if it dose not have the name attribute
+/// it will try to get the name from the DIE in the `DW_AT_abstract_origin`
+/// attribute. If that attribute is missing it will return `Ok(None)`, because
+/// the variable does not have a name.
 pub fn get_var_name<R: Reader<Offset = usize>>(
     dwarf: &Dwarf<R>,
     unit: &Unit<R>,
@@ -234,11 +243,12 @@ pub enum VariableLocation<R: Reader<Offset = usize>> {
     /// The gimli-rs expression that describes the location of the variable.
     Expression(gimli::Expression<R>),
 
-    /// The gimli-rs location list entry that describes the location of the Variable.
+    /// The gimli-rs location list entry that describes the location of the
+    /// Variable.
     LocationListEntry(gimli::LocationListEntry<R>),
 
-    /// The variable has no location currently but had or will have one. Note that the location can
-    /// be a constant stored in the DWARF stack.
+    /// The variable has no location currently but had or will have one. Note
+    /// that the location can be a constant stored in the DWARF stack.
     LocationOutOfRange,
 
     /// The variable has no location.
@@ -250,11 +260,14 @@ pub enum VariableLocation<R: Reader<Offset = usize>> {
 /// Description:
 ///
 /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
-/// * `unit` - A reference to gimli-rs `Unit` struct which contains the given DIE.
+/// * `unit` - A reference to gimli-rs `Unit` struct which contains the given
+///   DIE.
 /// * `die` - A reference to the variables DIE that contains the location.
-/// * `address` - A address that will be used to find the location, this is most often the current machine code address.
+/// * `address` - A address that will be used to find the location, this is most
+///   often the current machine code address.
 ///
-/// Will get the location for the given address from the attribute `DW_AT_location` in the variable DIE.
+/// Will get the location for the given address from the attribute
+/// `DW_AT_location` in the variable DIE.
 pub fn find_variable_location<R: Reader<Offset = usize>>(
     dwarf: &Dwarf<R>,
     unit: &Unit<R>,
@@ -296,12 +309,14 @@ pub fn find_variable_location<R: Reader<Offset = usize>>(
 /// Description:
 ///
 /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
-/// * `unit` - A reference to gimli-rs `Unit` struct, which the given DIE is located in.
-/// * `die` - A reference to the DIE representing a variable, which the resulting type DIE will represent the type off..
+/// * `unit` - A reference to gimli-rs `Unit` struct, which the given DIE is
+///   located in.
+/// * `die` - A reference to the DIE representing a variable, which the
+///   resulting type DIE will represent the type off..
 ///
-/// Will find the DIE representing the type of the variable that the given DIE represents.
-/// The type DIE is found using the attribute `DW_AT_type` in the given DIE or in the DIE from the
-/// attribute `DW_AT_abstract_origin`.
+/// Will find the DIE representing the type of the variable that the given DIE
+/// represents. The type DIE is found using the attribute `DW_AT_type` in the
+/// given DIE or in the DIE from the attribute `DW_AT_abstract_origin`.
 pub fn find_variable_type_die<R: Reader<Offset = usize>>(
     dwarf: &Dwarf<R>,
     unit: &Unit<R>,
@@ -351,13 +366,15 @@ pub fn find_variable_type_die<R: Reader<Offset = usize>>(
 /// Description:
 ///
 /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
-/// * `unit` - A reference to gimli-rs `Unit` struct, which the given DIE is located in.
+/// * `unit` - A reference to gimli-rs `Unit` struct, which the given DIE is
+///   located in.
 /// * `die` - A reference to DIE.
 /// * `cwd` - The work directory of the debugged program.
 ///
-/// This function will retrieve the source code location where the variable was declared.
-/// The information is retrieved from the  attributes starting with `DW_AT_decl_` in the given DIE,
-/// or in the DIE found in the attribute `DW_AT_abstract_origin`.
+/// This function will retrieve the source code location where the variable was
+/// declared. The information is retrieved from the  attributes starting with
+/// `DW_AT_decl_` in the given DIE, or in the DIE found in the attribute
+/// `DW_AT_abstract_origin`.
 pub fn find_variable_source_information<R: Reader<Offset = usize>>(
     dwarf: &Dwarf<R>,
     unit: &Unit<R>,

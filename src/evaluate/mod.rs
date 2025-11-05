@@ -1,11 +1,12 @@
-/// Contains functions for retrieving the values of some of the DWARF attributes.
+/// Contains functions for retrieving the values of some of the DWARF
+/// attributes.
 pub mod attributes;
 
 /// Contains structs representing the different Rust data types and more.
 pub mod evaluate;
 
-use crate::call_stack::MemoryAccess;
-use crate::registers::Registers;
+use std::convert::TryInto;
+
 use anyhow::{anyhow, Result};
 use evaluate::{convert_to_gimli_value, BaseTypeValue, EvaluatorValue};
 use gimli::{
@@ -19,7 +20,8 @@ use gimli::{
     Expression, Reader, Unit, UnitOffset,
 };
 use log::{error, info};
-use std::convert::TryInto;
+
+use crate::{call_stack::MemoryAccess, registers::Registers};
 
 /// Will find the DIE representing the type can evaluate the variable.
 ///
@@ -34,8 +36,8 @@ use std::convert::TryInto;
 /// * `registers` - A register struct for accessing the register values.
 /// * `mem` - A struct for accessing the memory of the debug target.
 ///
-/// This function is used to find the DIE representing the type and then to evaluate the value of
-/// the given DIE>
+/// This function is used to find the DIE representing the type and then to
+/// evaluate the value of the given DIE>
 pub fn call_evaluate<R: Reader<Offset = usize>, T: MemoryAccess>(
     dwarf: &Dwarf<R>,
     pc: u32,
@@ -118,9 +120,11 @@ pub fn call_evaluate<R: Reader<Offset = usize>, T: MemoryAccess>(
 /// * `pc` - A machine code address, usually the current code location.
 /// * `expr` - The expression to be evaluated.
 /// * `frame_base` - The frame base address value.
-/// * `type_unit` - A compilation unit which contains the given DIE which represents the type of
+/// * `type_unit` - A compilation unit which contains the given DIE which
+///   represents the type of
 /// the given expression. None if the expression does not have a type.
-/// * `type_die` - The DIE the represents the type of the given expression. None if the expression
+/// * `type_die` - The DIE the represents the type of the given expression. None
+///   if the expression
 /// does not have a type.
 /// * `registers` - A register struct for accessing the register values.
 /// * `mem` - A struct for accessing the memory of the debug target.
@@ -139,7 +143,6 @@ pub fn evaluate<R: Reader<Offset = usize>, T: MemoryAccess>(
     mem: &mut T,
 ) -> Result<EvaluatorValue<R>> {
     let pieces = evaluate_pieces(dwarf, unit, pc, expr, frame_base, registers, mem)?;
-    info!("Got pieces");
     evaluate_value(dwarf, pieces, type_unit, type_die, registers, mem)
 }
 
@@ -149,9 +152,11 @@ pub fn evaluate<R: Reader<Offset = usize>, T: MemoryAccess>(
 ///
 /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
 /// * `pieces` - A list of gimli-rs pieces containing the location information..
-/// * `type_unit` - A compilation unit which contains the given DIE which represents the type of
+/// * `type_unit` - A compilation unit which contains the given DIE which
+///   represents the type of
 /// the given expression. None if the expression does not have a type.
-/// * `type_die` - The DIE the represents the type of the given expression. None if the expression
+/// * `type_die` - The DIE the represents the type of the given expression. None
+///   if the expression
 /// does not have a type.
 /// * `registers` - A register struct for accessing the register values.
 /// * `mem` - A struct for accessing the memory of the debug target.
@@ -199,7 +204,8 @@ pub fn evaluate_value<R: Reader<Offset = usize>, T: MemoryAccess>(
 /// * `mem` - A struct for accessing the memory of the debug target.
 ///
 /// This function will evaluate the given expression into a list of pieces.
-/// These pieces describe the size and location of the variable the given expression is from.
+/// These pieces describe the size and location of the variable the given
+/// expression is from.
 pub fn evaluate_pieces<R: Reader<Offset = usize>, T: MemoryAccess>(
     dwarf: &Dwarf<R>,
     unit: &Unit<R>,
@@ -355,7 +361,9 @@ pub fn evaluate_pieces<R: Reader<Offset = usize>, T: MemoryAccess>(
             RequiresRelocatedAddress(_num) => {
                 error!("Unimplemented");
                 return Err(anyhow!("Unimplemented"));
-                //                result = eval.resume_with_relocated_address(num)?; // TODO: Check and test if correct.
+                //                result =
+                // eval.resume_with_relocated_address(num)?; // TODO: Check and
+                // test if correct.
             }
 
             RequiresIndexedAddress {
@@ -365,21 +373,23 @@ pub fn evaluate_pieces<R: Reader<Offset = usize>, T: MemoryAccess>(
                 // TODO: Check and test if correct. Also handle relocate flag
                 error!("Unimplemented");
                 return Err(anyhow!("Unimplemented"));
-                //                result = eval.resume_with_indexed_address(dwarf.address(unit, index)?)?;
+                //                result =
+                // eval.resume_with_indexed_address(dwarf.address(unit,
+                // index)?)?;
             }
 
             RequiresBaseType(unit_offset) => {
                 let die = unit.entry(unit_offset)?;
                 let mut attrs = die.attrs();
-                while let Some(attr) = match attrs.next() {
+                while let Some(_attr) = match attrs.next() {
                     Ok(val) => val,
                     Err(err) => {
                         error!("{:?}", err);
                         return Err(anyhow!("{:?}", err));
                     }
                 } {
-                    println!("Attribute name = {:?}", attr.name());
-                    println!("Attribute value = {:?}", attr.value());
+                    // println!("Attribute name = {:?}", attr.name());
+                    // println!("Attribute value = {:?}", attr.value());
                 }
 
                 error!("Unimplemented");
@@ -395,12 +405,15 @@ pub fn evaluate_pieces<R: Reader<Offset = usize>, T: MemoryAccess>(
 ///
 /// Description:
 ///
-/// * `unit` - A compilation unit which contains the type DIE pointed to by the given offset.
+/// * `unit` - A compilation unit which contains the type DIE pointed to by the
+///   given offset.
 /// * `unit` - The value to parse in bytes.
-/// * `base_type` - A offset into the given compilation unit which points to a DIE with the tag
+/// * `base_type` - A offset into the given compilation unit which points to a
+///   DIE with the tag
 /// `DW_TAG_base_type`.
 ///
-/// This function will parse the given value into the type given by the offset `base_type`.
+/// This function will parse the given value into the type given by the offset
+/// `base_type`.
 fn eval_base_type<R>(
     unit: &gimli::Unit<R>,
     data: Vec<u8>,
@@ -469,22 +482,26 @@ where
     BaseTypeValue::parse_base_type(data, encoding)
 }
 
-/// Will evaluate a value that is required when evaluating a expression into pieces.
+/// Will evaluate a value that is required when evaluating a expression into
+/// pieces.
 ///
 /// Description:
 ///
 /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
 /// * `unit` - A compilation unit which contains the given DIE.
 /// * `pc` - A machine code address, usually the current code location.
-/// * `eval` - A gimli-rs `Evaluation` that will be continued with the new value.
-/// * `result` - A gimli-rs `EvaluationResult` that will be updated with the new evaluation result.
+/// * `eval` - A gimli-rs `Evaluation` that will be continued with the new
+///   value.
+/// * `result` - A gimli-rs `EvaluationResult` that will be updated with the new
+///   evaluation result.
 /// * `frame_base` - The frame base address value.
-/// * `unit_offset` - A offset to the DIE that will be evaluated and added to the given `Evaluation` struct.
+/// * `unit_offset` - A offset to the DIE that will be evaluated and added to
+///   the given `Evaluation` struct.
 /// * `registers` - A register struct for accessing the register values.
 /// * `mem` - A struct for accessing the memory of the debug target.
 ///
-/// This function is a helper function for continuing a `Piece` evaluation where another value
-/// needs to be evaluated first.
+/// This function is a helper function for continuing a `Piece` evaluation where
+/// another value needs to be evaluated first.
 fn help_at_location<R: Reader<Offset = usize>, T: MemoryAccess>(
     dwarf: &Dwarf<R>,
     unit: &Unit<R>,

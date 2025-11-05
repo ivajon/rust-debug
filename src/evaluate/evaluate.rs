@@ -1,17 +1,14 @@
-use super::attributes;
-use crate::call_stack::MemoryAccess;
-use crate::registers::Registers;
-use std::convert::TryInto;
-
-use gimli::{DwAte, Location, Piece, Reader};
+use std::{convert::TryInto, fmt};
 
 use anyhow::{anyhow, Result};
+use gimli::{DwAte, Location, Piece, Reader};
 use log::{debug, error, info};
 
-use std::fmt;
+use super::attributes;
+use crate::{call_stack::MemoryAccess, registers::Registers};
 
-/// A wrapper for `gimli::Piece` which also contains a boolean that describes if this piece has
-/// already been used to evaluate a value.
+/// A wrapper for `gimli::Piece` which also contains a boolean that describes if
+/// this piece has already been used to evaluate a value.
 /// This means that the offset in the type information should be used.
 #[derive(Debug, Clone)]
 struct MyPiece<R: Reader<Offset = usize>> {
@@ -30,8 +27,8 @@ impl<R: Reader<Offset = usize>> MyPiece<R> {
         }
     }
 
-    /// Updates the size in_bits value and return a boolean which tells if the piece is consumed
-    /// and should be removed.
+    /// Updates the size in_bits value and return a boolean which tells if the
+    /// piece is consumed and should be removed.
     ///
     /// Description:
     ///
@@ -57,7 +54,8 @@ impl<R: Reader<Offset = usize>> MyPiece<R> {
     }
 }
 
-/// Describes all the different Rust types values in the form of a tree structure.
+/// Describes all the different Rust types values in the form of a tree
+/// structure.
 #[derive(Debug, Clone)]
 pub enum EvaluatorValue<R: Reader<Offset = usize>> {
     /// A base_type type and value with location information.
@@ -96,8 +94,8 @@ pub enum EvaluatorValue<R: Reader<Offset = usize>> {
     /// The value is optimized away.
     OptimizedOut, // NOTE: Value is optimized out.
 
-    /// The variable has no location currently but had or will have one. Note that the location can
-    /// be a constant stored in the DWARF stack.
+    /// The variable has no location currently but had or will have one. Note
+    /// that the location can be a constant stored in the DWARF stack.
     LocationOutOfRange,
 
     /// The value is size 0 bits.
@@ -151,7 +149,8 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
         }
     }
 
-    /// Will return a `Vec` of location and unparsed value infromation about the value.
+    /// Will return a `Vec` of location and unparsed value infromation about the
+    /// value.
     pub fn get_variable_information(self) -> Vec<ValueInformation> {
         match self {
             EvaluatorValue::Value(_, var_info) => vec![var_info],
@@ -195,12 +194,15 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
     /// * `dwarf` - A reference to gimli-rs `Dwarf` struct.
     /// * `registers` - A register struct for accessing the register values.
     /// * `mem` - A struct for accessing the memory of the debug target.
-    /// * `pieces` - A list of gimli-rs pieces containing the location information..
-    /// * `unit_offset` - A offset to the `Unit` which contains the given type DIE.
-    /// * `die_offset` - A offset to the DIE that contains the type of the value.
+    /// * `pieces` - A list of gimli-rs pieces containing the location
+    ///   information..
+    /// * `unit_offset` - A offset to the `Unit` which contains the given type
+    ///   DIE.
+    /// * `die_offset` - A offset to the DIE that contains the type of the
+    ///   value.
     ///
-    /// This function will use the location information in the `pieces` parameter to read the
-    /// values and parse it to the given type.
+    /// This function will use the location information in the `pieces`
+    /// parameter to read the values and parse it to the given type.
     pub fn evaluate_variable_with_type<M: MemoryAccess>(
         dwarf: &gimli::Dwarf<R>,
         registers: &Registers,
@@ -258,13 +260,15 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
         )
     }
 
-    /// This function will evaluate the given pieces into a unsigned 32 bit integer.
+    /// This function will evaluate the given pieces into a unsigned 32 bit
+    /// integer.
     ///
     /// Description:
     ///
     /// * `registers` - A register struct for accessing the register values.
     /// * `mem` - A struct for accessing the memory of the debug target.
-    /// * `pieces` - A list of gimli-rs pieces containing the location information..
+    /// * `pieces` - A list of gimli-rs pieces containing the location
+    ///   information..
     pub fn evaluate_variable<M: MemoryAccess>(
         registers: &Registers,
         mem: &mut M,
@@ -284,7 +288,8 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
     /// * `byte_size` - The size of the base type in bytes.
     /// * `data_offset` - The memory address offset.
     /// * `encoding` - The encoding of the base type.
-    /// * `pieces` - A list of pieces containing the location and size information.
+    /// * `pieces` - A list of pieces containing the location and size
+    ///   information.
     fn handle_eval_piece<M: MemoryAccess>(
         registers: &Registers,
         mem: &mut M,
@@ -341,7 +346,9 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
                                 pieces.remove(0);
                             }
                         }
-                        None => return Err(anyhow!("Requires reg")),
+                        None => {
+                            return Err(anyhow!("Requires reg"));
+                        }
                     };
                 }
                 Location::Address { mut address } => {
@@ -474,7 +481,8 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
         }
 
         while all_bytes.len() > byte_size as usize {
-            all_bytes.pop(); // NOTE: Removes extra bytes if value is from register and less the 4 byts
+            all_bytes.pop(); // NOTE: Removes extra bytes if value is from
+                             // register and less the 4 byts
         }
 
         Ok(EvaluatorValue::Value(
@@ -493,7 +501,8 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
     /// * `unit` - A compilation unit which contains the given DIE.
     /// * `die` - The current type die in the type tree.
     /// * `data_offset` - The memory address offset.
-    /// * `pieces` - A list of pieces containing the location and size information.
+    /// * `pieces` - A list of pieces containing the location and size
+    ///   information.
     fn eval_type<M: MemoryAccess>(
         registers: &Registers,
         mem: &mut M,
@@ -647,7 +656,8 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
                     },
                 )))
 
-                // TODO: Use DW_AT_type and the evaluated address to evaluate the pointer.
+                // TODO: Use DW_AT_type and the evaluated address to evaluate
+                // the pointer.
             }
             gimli::DW_TAG_array_type => {
                 // Make sure that the die has the tag DW_TAG_array_type.
@@ -783,13 +793,8 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
                                 match attributes::data_member_location_attribute(&c_die)? {
                                     Some(val) => val,
                                     None => {
-                                        error!(
-                                "Expected member die to have attribute DW_AT_data_member_location"
-                            );
-                                        return Err(
-                                            anyhow!(
-                                "Expected member die to have attribute DW_AT_data_member_location"),
-                                        );
+                                        error!("Expected member die to have attribute DW_AT_data_member_location");
+                                        return Err(anyhow!("Expected member die to have attribute DW_AT_data_member_location"));
                                     }
                                 };
                             member_dies.push((data_member_location, c_die))
@@ -1032,8 +1037,8 @@ impl<R: Reader<Offset = usize>> EvaluatorValue<R> {
                 check_alignment(die, data_offset, pieces)?;
 
                 // Get the enum variant.
-                // TODO: If variant is optimised out then return optimised out and remove the pieces for
-                // this type if needed.
+                // TODO: If variant is optimised out then return optimised out and remove the
+                // pieces for this type if needed.
 
                 let variant: Option<MemberValue<R>> = match attributes::discr_attribute(die)? {
                     Some(die_offset) => {
@@ -1268,11 +1273,13 @@ pub fn get_udata(value: BaseTypeValue) -> Result<u64> {
     }
 }
 
-/// Format a `Vec` of `EvaluatorValue`s into a `String` that describes the value and type.
+/// Format a `Vec` of `EvaluatorValue`s into a `String` that describes the value
+/// and type.
 ///
 /// Description:
 ///
-/// * `values` - A list of `EvaluatorValue`s that will be formatted into a `String`.
+/// * `values` - A list of `EvaluatorValue`s that will be formatted into a
+///   `String`.
 fn format_values<R: Reader<Offset = usize>>(values: &Vec<EvaluatorValue<R>>) -> String {
     let len = values.len();
     if len == 0 {
@@ -1292,7 +1299,8 @@ fn format_values<R: Reader<Offset = usize>>(values: &Vec<EvaluatorValue<R>>) -> 
 ///
 /// Description:
 ///
-/// * `values` - A list of `EvaluatorValue`s that will be formatted into a `String`.
+/// * `values` - A list of `EvaluatorValue`s that will be formatted into a
+///   `String`.
 fn format_types<R: Reader<Offset = usize>>(values: &Vec<EvaluatorValue<R>>) -> String {
     let len = values.len();
     if len == 0 {
@@ -1578,7 +1586,8 @@ pub struct SubrangeTypeValue {
     /// The count
     pub count: Option<u64>,
 
-    /// The count value but evaluated. // TODO: Combine count and number to one attriute.
+    /// The count value but evaluated. // TODO: Combine count and number to one
+    /// attriute.
     pub base_type_value: Option<(BaseTypeValue, ValueInformation)>,
     // DW_TAG_variant contains:
     // * DW_AT_type
@@ -2017,7 +2026,8 @@ fn trim_piece_bytes<R: Reader<Offset = usize>>(
         Some(offset) => {
             //if offset % 8 == 0 {
             //    error!("Expected the offset to be in bytes, got {} bits", offset);
-            //    return Err(anyhow!("Expected the offset to be in bytes, got {} bits", offset));
+            //    return Err(anyhow!("Expected the offset to be in bytes, got {} bits",
+            // offset));
             //}
             ((offset + 8 - 1) / 8) as usize
         }

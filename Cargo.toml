@@ -1,5 +1,5 @@
 [package]
-name	= "rust-debug"
+name = "rust-debug"
 version = "0.1.0"
 authors = ["Niklas <nicke.l@telia.com>"]
 license = "MIT OR Apache-2.0"
@@ -15,7 +15,6 @@ keywords = ["debug", "debugging"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gimli			= "0.26"
-anyhow			= "1.0"
-log			= "0.4"
-
+gimli = "0.31.1"
+anyhow = "1.0"
+log = "0.4"
